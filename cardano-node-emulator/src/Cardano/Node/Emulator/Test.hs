@@ -12,17 +12,17 @@ module Cardano.Node.Emulator.Test (
   -- * Basic testing
     hasValidatedTransactionCountOfTotal
   , renderLogs
-  -- * Testing with `quickcheck-contractmodel`
-  , propSanityCheckModel
-  , propSanityCheckAssertions
-  , propRunActions_
-  , propRunActions
-  , propRunActionsWithOptions
+  -- -- * Testing with `quickcheck-contractmodel`
+  -- , propSanityCheckModel
+  -- , propSanityCheckAssertions
+  -- , propRunActions_
+  -- , propRunActions
+  -- , propRunActionsWithOptions
   -- * Other exports
-  , chainStateToChainIndex
-  , chainStateToContractModelChainState
-  -- * Re-export quickcheck-contractmodel
-  , module Test.QuickCheck.ContractModel
+  -- , chainStateToChainIndex
+  -- , chainStateToContractModelChainState
+  -- -- * Re-export quickcheck-contractmodel
+  -- , module Test.QuickCheck.ContractModel
 ) where
 
 import Cardano.Api qualified as C
@@ -50,14 +50,14 @@ import Ledger.Value.CardanoAPI qualified as Value
 import Prettyprinter qualified as Pretty
 import Prettyprinter.Render.Text qualified as Pretty
 import Test.QuickCheck as QC (Property, Testable (property), counterexample, expectFailure, (.&&.))
-import Test.QuickCheck.ContractModel (Actions, BalanceChangeOptions (BalanceChangeOptions),
-                                      ChainIndex (ChainIndex, networkId, transactions),
-                                      ChainState (ChainState, slot, utxo), ContractModel, HasChainIndex, IsRunnable,
-                                      ModelState, RunModel, RunMonad (unRunMonad), TxInState (TxInState),
-                                      assertBalanceChangesMatch, asserts, balanceChanges, runContractModel,
-                                      signerPaysFees, stateAfter, symIsZero)
-import Test.QuickCheck.ContractModel qualified as CM
-import Test.QuickCheck.ContractModel.Internal (ContractModelResult)
+-- import Test.QuickCheck.ContractModel (Actions, BalanceChangeOptions (BalanceChangeOptions),
+--                                       ChainIndex (ChainIndex, networkId, transactions),
+--                                       ChainState (ChainState, slot, utxo), ContractModel, HasChainIndex, IsRunnable,
+--                                       ModelState, RunModel, RunMonad (unRunMonad), TxInState (TxInState),
+--                                       assertBalanceChangesMatch, asserts, balanceChanges, runContractModel,
+--                                       signerPaysFees, stateAfter, symIsZero)
+-- import Test.QuickCheck.ContractModel qualified as CM
+-- import Test.QuickCheck.ContractModel.Internal (ContractModelResult)
 import Test.QuickCheck.Monadic (PropertyM, monadic, monadicIO)
 import Test.QuickCheck.StateModel (Realized)
 
@@ -84,123 +84,123 @@ renderLogs = Pretty.renderStrict . Pretty.layoutPretty Pretty.defaultLayoutOptio
 
 type instance Realized EmulatorM a = a
 
-instance IsRunnable EmulatorM where
-  awaitSlot = awaitSlot . fromCardanoSlotNo
+-- instance IsRunnable EmulatorM where
+--   awaitSlot = awaitSlot . fromCardanoSlotNo
 
-instance HasChainIndex EmulatorM where
-  getChainIndex = do
-    nid <- pNetworkId <$> getParams
-    chainStateToChainIndex nid <$> use esChainState
-  getChainState = do
-    chainStateToContractModelChainState <$> use esChainState
+-- instance HasChainIndex EmulatorM where
+--   getChainIndex = do
+--     nid <- pNetworkId <$> getParams
+--     chainStateToChainIndex nid <$> use esChainState
+--   getChainState = do
+--     chainStateToContractModelChainState <$> use esChainState
 
--- | Sanity check a `ContractModel`. Ensures that wallet balances are not always unchanged.
-propSanityCheckModel :: forall state. ContractModel state => QC.Property
-propSanityCheckModel =
-  QC.expectFailure (noBalanceChanges . stateAfter @state)
-  where
-    noBalanceChanges s = all symIsZero (s ^. balanceChanges)
+-- -- | Sanity check a `ContractModel`. Ensures that wallet balances are not always unchanged.
+-- propSanityCheckModel :: forall state. ContractModel state => QC.Property
+-- propSanityCheckModel =
+--   QC.expectFailure (noBalanceChanges . stateAfter @state)
+--   where
+--     noBalanceChanges s = all symIsZero (s ^. balanceChanges)
 
--- | Sanity check a `ContractModel`. Ensures that all assertions in
--- the property generation succeed.
-propSanityCheckAssertions :: forall state. ContractModel state => Actions state -> QC.Property
-propSanityCheckAssertions as = asserts $ stateAfter as
+-- -- | Sanity check a `ContractModel`. Ensures that all assertions in
+-- -- the property generation succeed.
+-- propSanityCheckAssertions :: forall state. ContractModel state => Actions state -> QC.Property
+-- propSanityCheckAssertions as = asserts $ stateAfter as
 
 
 
--- | Run `Actions` in the emulator and check that the model and the emulator agree on the final
---   wallet balance changes. Starts with 100.000.000 Ada for each wallet and the default parameters.
-propRunActions_ :: forall state.
-    RunModel state EmulatorM
-    => Actions state                           -- ^ The actions to run
-    -> Property
-propRunActions_ = propRunActions (\_ _ -> Nothing)
+-- -- | Run `Actions` in the emulator and check that the model and the emulator agree on the final
+-- --   wallet balance changes. Starts with 100.000.000 Ada for each wallet and the default parameters.
+-- propRunActions_ :: forall state.
+--     RunModel state EmulatorM
+--     => Actions state                           -- ^ The actions to run
+--     -> Property
+-- propRunActions_ = propRunActions (\_ _ -> Nothing)
 
-propRunActions :: forall state.
-    RunModel state EmulatorM
-    => (ModelState state -> EmulatorLogs -> Maybe String) -- ^ Predicate to check at the end of execution
-    -> Actions state                           -- ^ The actions to run
-    -> Property
-propRunActions = propRunActionsWithOptions (Map.fromList $ (, Value.adaValueOf 100_000_000) <$> knownAddresses) def
+-- propRunActions :: forall state.
+--     RunModel state EmulatorM
+--     => (ModelState state -> EmulatorLogs -> Maybe String) -- ^ Predicate to check at the end of execution
+--     -> Actions state                           -- ^ The actions to run
+--     -> Property
+-- propRunActions = propRunActionsWithOptions (Map.fromList $ (, Value.adaValueOf 100_000_000) <$> knownAddresses) def
 
-propRunActionsWithOptions :: forall state.
-    RunModel state EmulatorM
-    => Map CardanoAddress C.Value              -- ^ Initial distribution of funds
-    -> E.Params                                -- ^ Node parameters
-    -> (ModelState state -> EmulatorLogs -> Maybe String) -- ^ Predicate to check at the end of execution
-    -> Actions state                           -- ^ The actions to run
-    -> Property
-propRunActionsWithOptions initialDist params predicate actions =
-    asserts finalState QC..&&.
-    monadic runFinalPredicate monadicPredicate
-    where
-        finalState = stateAfter actions
-        ps = pProtocolParams params
+-- propRunActionsWithOptions :: forall state.
+--     RunModel state EmulatorM
+--     => Map CardanoAddress C.Value              -- ^ Initial distribution of funds
+--     -> E.Params                                -- ^ Node parameters
+--     -> (ModelState state -> EmulatorLogs -> Maybe String) -- ^ Predicate to check at the end of execution
+--     -> Actions state                           -- ^ The actions to run
+--     -> Property
+-- propRunActionsWithOptions initialDist params predicate actions =
+--     asserts finalState QC..&&.
+--     monadic runFinalPredicate monadicPredicate
+--     where
+--         finalState = stateAfter actions
+--         ps = pProtocolParams params
 
-        monadicPredicate :: PropertyM (RunMonad EmulatorM) Property
-        monadicPredicate = do
-            result <- runContractModel actions
-            pure $ balanceChangePredicate result
+--         monadicPredicate :: PropertyM (RunMonad EmulatorM) Property
+--         monadicPredicate = do
+--             result <- runContractModel actions
+--             pure $ balanceChangePredicate result
 
-        runFinalPredicate :: RunMonad EmulatorM Property
-                          -> Property
-        runFinalPredicate contract =
-          let (res, lg) = (\m -> evalRWS m params (emptyEmulatorStateWithInitialDist initialDist))
-                              . runExceptT
-                              . fmap fst
-                              . runWriterT
-                              . unRunMonad
-                              $ contract
-          in monadicIO $
-              let logs = Text.unpack (renderLogs lg)
-              in case (res, predicate finalState lg) of
-                (Left err, _) -> return $ counterexample (logs ++ "\n" ++ show err)
-                                        $ property False
-                (Right prop, Just msg) -> return $ counterexample (logs ++ "\n" ++ msg) prop
-                (Right prop, Nothing) -> return $ counterexample logs prop
+--         runFinalPredicate :: RunMonad EmulatorM Property
+--                           -> Property
+--         runFinalPredicate contract =
+--           let (res, lg) = (\m -> evalRWS m params (emptyEmulatorStateWithInitialDist initialDist))
+--                               . runExceptT
+--                               . fmap fst
+--                               . runWriterT
+--                               . unRunMonad
+--                               $ contract
+--           in monadicIO $
+--               let logs = Text.unpack (renderLogs lg)
+--               in case (res, predicate finalState lg) of
+--                 (Left err, _) -> return $ counterexample (logs ++ "\n" ++ show err)
+--                                         $ property False
+--                 (Right prop, Just msg) -> return $ counterexample (logs ++ "\n" ++ msg) prop
+--                 (Right prop, Nothing) -> return $ counterexample logs prop
 
-        balanceChangePredicate :: ContractModelResult state -> Property
-        balanceChangePredicate result =
-          let prettyAddr a = fromMaybe (show a) $ lookup (show a) prettyWalletNames
-          in assertBalanceChangesMatch (BalanceChangeOptions False signerPaysFees ps prettyAddr) result
+--         balanceChangePredicate :: ContractModelResult state -> Property
+--         balanceChangePredicate result =
+--           let prettyAddr a = fromMaybe (show a) $ lookup (show a) prettyWalletNames
+--           in assertBalanceChangesMatch (BalanceChangeOptions False signerPaysFees ps prettyAddr) result
 
-prettyWalletNames :: [(String, String)]
-prettyWalletNames = [ (show addr, "Wallet " ++ show nr) | (addr, nr) <- zip knownAddresses [1..10::Int]]
+-- prettyWalletNames :: [(String, String)]
+-- prettyWalletNames = [ (show addr, "Wallet " ++ show nr) | (addr, nr) <- zip knownAddresses [1..10::Int]]
 
--- Note `chainStateToChainIndex` below is moved from `Plutus.Contract.Test.ContractModel.Internal`
--- and could use some serious clean up. Mostly to get rid of the conversions to/from plutus types.
+-- -- Note `chainStateToChainIndex` below is moved from `Plutus.Contract.Test.ContractModel.Internal`
+-- -- and could use some serious clean up. Mostly to get rid of the conversions to/from plutus types.
 
--- Note, we don't store the genesis transaction in the index but put it in the before state
--- instead to avoid showing that as a balance change in the models.
-chainStateToChainIndex :: CardanoAPI.NetworkId -> E.ChainState -> ChainIndex
-chainStateToChainIndex nid cs =
-            ChainIndex { -- The Backwards order
-                         transactions = fst $ foldr addBlock ([], beforeState)
-                                                             ( reverse
-                                                             . drop 1
-                                                             . reverse
-                                                             . view E.chainNewestFirst
-                                                             $ cs)
-                       , networkId = nid
-                       }
-    where beforeState = CM.ChainState { slot = 0
-                                      , utxo = Index.initialise (take 1 $ reverse (cs ^. E.chainNewestFirst))
-                                      }
-          addBlock block (txs, state) =
-            ( txs ++ [ TxInState ((\(CardanoEmulatorEraTx tx') -> tx') . unOnChain $ tx)
-                                  state
-                                  (onChainTxIsValid tx)
-                      | tx <- block ]
-            , updateState block state )
+-- -- Note, we don't store the genesis transaction in the index but put it in the before state
+-- -- instead to avoid showing that as a balance change in the models.
+-- chainStateToChainIndex :: CardanoAPI.NetworkId -> E.ChainState -> ChainIndex
+-- chainStateToChainIndex nid cs =
+--             ChainIndex { -- The Backwards order
+--                          transactions = fst $ foldr addBlock ([], beforeState)
+--                                                              ( reverse
+--                                                              . drop 1
+--                                                              . reverse
+--                                                              . view E.chainNewestFirst
+--                                                              $ cs)
+--                        , networkId = nid
+--                        }
+--     where beforeState = CM.ChainState { slot = 0
+--                                       , utxo = Index.initialise (take 1 $ reverse (cs ^. E.chainNewestFirst))
+--                                       }
+--           addBlock block (txs, state) =
+--             ( txs ++ [ TxInState ((\(CardanoEmulatorEraTx tx') -> tx') . unOnChain $ tx)
+--                                   state
+--                                   (onChainTxIsValid tx)
+--                       | tx <- block ]
+--             , updateState block state )
 
-          updateState :: [OnChainTx] -> CM.ChainState -> CM.ChainState
-          updateState block state =
-            CM.ChainState{ slot = slot state + 1
-                         , utxo = Index.insertBlock block (utxo state)
-                         }
+--           updateState :: [OnChainTx] -> CM.ChainState -> CM.ChainState
+--           updateState block state =
+--             CM.ChainState{ slot = slot state + 1
+--                          , utxo = Index.insertBlock block (utxo state)
+--                          }
 
-chainStateToContractModelChainState :: E.ChainState -> CM.ChainState
-chainStateToContractModelChainState cst =
-  ChainState { utxo = cst ^. E.index
-             , slot = fromIntegral $ cst ^. E.chainCurrentSlot
-             }
+-- chainStateToContractModelChainState :: E.ChainState -> CM.ChainState
+-- chainStateToContractModelChainState cst =
+--   ChainState { utxo = cst ^. E.index
+--              , slot = fromIntegral $ cst ^. E.chainCurrentSlot
+--              }

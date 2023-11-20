@@ -8,7 +8,7 @@
 -- | Calculating transaction fees in the emulator.
 module Cardano.Node.Emulator.Internal.Node.Fee(
   estimateCardanoBuildTxFee,
-  makeAutoBalancedTransaction,
+--   makeAutoBalancedTransaction,
   makeAutoBalancedTransactionWithUtxoProvider,
   utxoProviderFromWalletOutputs,
   BalancingError(..),
@@ -22,8 +22,8 @@ import Cardano.Api.Shelley qualified as C.Api
 import Cardano.Ledger.BaseTypes (Globals (systemStart))
 import Cardano.Ledger.Core qualified as C.Ledger (Tx)
 import Cardano.Ledger.Shelley.API qualified as C.Ledger hiding (Tx)
-import Cardano.Node.Emulator.Internal.Node.Params (EmulatorEra, PParams, Params (emulatorPParams), emulatorEraHistory,
-                                                   emulatorGlobals, pProtocolParams)
+import Cardano.Node.Emulator.Internal.Node.Params (EmulatorEra, PParams, Params (emulatorPParams), emulatorGlobals,
+                                                   pProtocolParams)
 import Cardano.Node.Emulator.Internal.Node.Validation (CardanoLedgerError, UTxO (UTxO), makeTransactionBody)
 import Control.Arrow ((&&&))
 import Control.Lens (over, (&))
@@ -55,43 +55,43 @@ estimateCardanoBuildTxFee params utxo txBodyContent = do
   txBody <- makeTransactionBody params utxo txBodyContent
   pure $ evaluateTransactionFee (emulatorPParams params) txBody nkeys
 
--- | Creates a balanced transaction by calculating the execution units, the fees and the change,
--- which is assigned to the given address. Only balances Ada.
-makeAutoBalancedTransaction
-  :: Params
-  -> UTxO EmulatorEra -- ^ Just the transaction inputs, not the entire 'UTxO'.
-  -> CardanoBuildTx
-  -> CardanoAddress -- ^ Change address
-  -> Either CardanoLedgerError (C.Api.Tx C.Api.BabbageEra)
-makeAutoBalancedTransaction params utxo (CardanoBuildTx txBodyContent) cChangeAddr = first Right $ do
-  -- Compute the change.
-  C.Api.BalancedTxBody _ change _ <- first (TxBodyError . C.Api.displayError) $ balance []
-  let
-    -- Recompute execution units with full set of UTxOs, including change.
-    trial = balance [change]
-    -- Correct for a negative balance in cases where execution units, and hence fees, have increased.
-    change' =
-      case (change, trial) of
-        (C.Api.TxOut addr (C.Api.TxOutValue vtype value) datum _referenceScript, Left (C.Api.TxBodyErrorAdaBalanceNegative delta)) ->
-          C.Api.TxOut addr (C.Api.TxOutValue vtype $ value <> lovelaceToValue delta) datum _referenceScript
-        _ -> change
-  -- Construct the body with correct execution units and fees.
-  C.Api.BalancedTxBody txBody _ _ <- first (TxBodyError . C.Api.displayError) $ balance [change']
-  pure $ C.Api.makeSignedTransaction [] txBody
-  where
-    eh = emulatorEraHistory params
-    ss = systemStart $ emulatorGlobals params
-    utxo' = fromLedgerUTxO utxo
-    balance extraOuts = C.Api.makeTransactionBodyAutoBalance
-      C.Api.BabbageEraInCardanoMode
-      ss
-      eh
-      (pProtocolParams params)
-      mempty
-      utxo'
-      txBodyContent { C.Api.txOuts = C.Api.txOuts txBodyContent ++ extraOuts }
-      cChangeAddr
-      Nothing
+-- -- | Creates a balanced transaction by calculating the execution units, the fees and the change,
+-- -- which is assigned to the given address. Only balances Ada.
+-- makeAutoBalancedTransaction
+--   :: Params
+--   -> UTxO EmulatorEra -- ^ Just the transaction inputs, not the entire 'UTxO'.
+--   -> CardanoBuildTx
+--   -> CardanoAddress -- ^ Change address
+--   -> Either CardanoLedgerError (C.Api.Tx C.Api.BabbageEra)
+-- makeAutoBalancedTransaction params utxo (CardanoBuildTx txBodyContent) cChangeAddr = first Right $ do
+--   -- Compute the change.
+--   C.Api.BalancedTxBody _ change _ <- first (TxBodyError . C.Api.displayError) $ balance []
+--   let
+--     -- Recompute execution units with full set of UTxOs, including change.
+--     trial = balance [change]
+--     -- Correct for a negative balance in cases where execution units, and hence fees, have increased.
+--     change' =
+--       case (change, trial) of
+--         (C.Api.TxOut addr (C.Api.TxOutValue vtype value) datum _referenceScript, Left (C.Api.TxBodyErrorAdaBalanceNegative delta)) ->
+--           C.Api.TxOut addr (C.Api.TxOutValue vtype $ value <> lovelaceToValue delta) datum _referenceScript
+--         _ -> change
+--   -- Construct the body with correct execution units and fees.
+--   C.Api.BalancedTxBody txBody _ _ <- first (TxBodyError . C.Api.displayError) $ balance [change']
+--   pure $ C.Api.makeSignedTransaction [] txBody
+--   where
+--     eh = emulatorEraHistory params
+--     ss = systemStart $ emulatorGlobals params
+--     utxo' = fromLedgerUTxO utxo
+--     balance extraOuts = C.Api.makeTransactionBodyAutoBalance
+--       C.Api.BabbageEraInCardanoMode
+--       ss
+--       eh
+--       (pProtocolParams params)
+--       mempty
+--       utxo'
+--       txBodyContent { C.Api.txOuts = C.Api.txOuts txBodyContent ++ extraOuts }
+--       cChangeAddr
+--       Nothing
 
 -- | A utxo provider returns outputs that cover at least the given value,
 -- and return the change, i.e. how much the outputs overshoot the given value.

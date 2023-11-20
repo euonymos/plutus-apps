@@ -25,7 +25,7 @@ module Cardano.Node.Emulator.Internal.Node.Params (
   testnet,
   emulatorEpochSize,
   emulatorGlobals,
-  emulatorEraHistory
+  -- emulatorEraHistory
 ) where
 
 import Cardano.Api qualified as C
@@ -50,12 +50,12 @@ import Data.Default (Default (def))
 import Data.Map (fromList)
 import Data.Maybe (fromMaybe)
 import Data.Ratio ((%))
-import Data.SOP.Strict (K (K), NP (Nil, (:*)))
+-- import Data.SOP.Strict (K (K), NP (Nil, (:*)))
 import GHC.Generics (Generic)
 import GHC.Natural (Natural)
 import Ledger.Test (testnet)
-import Ouroboros.Consensus.HardFork.History qualified as Ouroboros
-import Ouroboros.Consensus.Util.Counting qualified as Ouroboros
+-- import Ouroboros.Consensus.HardFork.History qualified as Ouroboros
+-- import Ouroboros.Consensus.Util.Counting qualified as Ouroboros
 import Plutus.V1.Ledger.Api (POSIXTime (POSIXTime))
 import PlutusCore (defaultCostModelParams)
 import Prettyprinter (Pretty (pretty), viaShow, vsep, (<+>))
@@ -204,9 +204,9 @@ genesisDefaultsFromParams params@Params { pSlotConfig, pNetworkId } = C.shelleyG
   where
     d = fromMaybe (error "3 % 5 should be valid UnitInterval") $ boundRational (3 % 5)
 
--- | A sensible default 'EraHistory' value for the emulator
-emulatorEraHistory :: Params -> C.EraHistory C.CardanoMode
-emulatorEraHistory params = C.EraHistory C.CardanoMode (Ouroboros.mkInterpreter $ Ouroboros.summaryWithExactly list)
-  where
-    one = Ouroboros.nonEmptyHead $ Ouroboros.getSummary $ Ouroboros.neverForksSummary emulatorEpochSize (slotLength params)
-    list = Ouroboros.Exactly $ K one :* K one :* K one :* K one :* K one :* K one :* Nil
+-- -- | A sensible default 'EraHistory' value for the emulator
+-- emulatorEraHistory :: Params -> C.EraHistory C.CardanoMode
+-- emulatorEraHistory params = C.EraHistory C.CardanoMode (Ouroboros.mkInterpreter $ Ouroboros.summaryWithExactly list)
+--   where
+--     one = Ouroboros.nonEmptyHead $ Ouroboros.getSummary $ Ouroboros.neverForksSummary emulatorEpochSize (slotLength params)
+--     list = Ouroboros.Exactly $ K one :* K one :* K one :* K one :* K one :* K one :* Nil
